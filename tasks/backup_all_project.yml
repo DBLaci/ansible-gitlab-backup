@@ -1,0 +1,33 @@
+---
+
+- name: List all projects
+  uri:
+    url: "https://gitlab.com/api/v3/projects"
+    method: GET
+    body_format: json
+    headers:
+      "PRIVATE-TOKEN": "{{ backup_gitlab_token }}"
+  register: backup_gitlab_all_projects
+
+- name: "Generate export manually"
+  debug: msg="Please generate export downloads manually on gitlab project edit page!"
+
+- name: Start gitlab.com full export
+  get_url:
+    url: "{{ item.web_url }}/download_export"
+    #url: "https://gitlab.com/GROUP/PROJECT/generate_new_export"
+    headers:
+      "PRIVATE-TOKEN: {{ backup_gitlab_token }}"
+    dest: '/home/backup/'
+  with_items: "{{ backup_gitlab_all_projects.json | default([])}}"
+
+#api not supported yet
+# - name: Start gitlab.com full export
+#   uri:
+#     url: "https://gitlab.com/api/v3/projects/{{ item }}/download_export"
+#     method: GET
+#     body_format: json
+#     headers:
+#       "PRIVATE-TOKEN": "{{ backup_gitlab_token }}"
+#   with_items:
+#     - '123123123'

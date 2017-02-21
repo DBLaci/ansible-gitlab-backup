@@ -1,0 +1,4 @@
+---
+
+- include: backup_all_project.yml
+  when: gitlab_backup_enabled
