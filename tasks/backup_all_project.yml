@@ -6,20 +6,68 @@
     method: GET
     body_format: json
     headers:
-      "PRIVATE-TOKEN": "{{ backup_gitlab_token }}"
+      "PRIVATE-TOKEN": "{{ gitlab_backup_token }}"
   register: backup_gitlab_all_projects
 
-- name: "Generate export manually"
-  debug: msg="Please generate export downloads manually on gitlab project edit page!"
+- name: Collect generate url list
+  set_fact:
+    gitlab_backup_generate_url_list: "{{ gitlab_backup_generate_url_list | default([]) + [ item.web_url + '/edit' ] }}"
+  with_items: "{{ backup_gitlab_all_projects.json }}"
 
+- name: Open all these urls in your browser and click export. (TODO this should be automatic, but there is no api support for this ATM)
+  debug: "var=gitlab_backup_generate_url_list"
+
+- pause:
+    seconds: 5
+
+- name: Generate export manually
+  debug: msg="Please generate export downloads manually on gitlab project edit page!\n{{ gitlab_backup_generate_url_list | join('\n') }}"
+
+- name: Create target directory
+  file:
+    path: "{{ gitlab_backup_target_dir }}"
+    state: directory
+    recurse: yes
+
+# TODO: this version still follows redirects (follow_redirects not working??)
+#       the filename is not used on download
+# - name: Start gitlab.com full export
+#   uri:
+#     url: "{{ item.web_url }}/download_export"
+#     follow_redirects: none
+#     #url: "https://gitlab.com/GROUP/PROJECT/generate_new_export"
+#     headers:
+#       PRIVATE-TOKEN: "{{ gitlab_backup_token }}"
+#     dest: "{{ gitlab_backup_target_dir }}"
+#   register: url_result
+#   with_items: "{{ backup_gitlab_all_projects.json | default([])}}"
+#   ignore_errors: yes
+
+# TODO: this version follows redirect and download "edit" file in case of export not exists.
 - name: Start gitlab.com full export
   get_url:
     url: "{{ item.web_url }}/download_export"
-    #url: "https://gitlab.com/GROUP/PROJECT/generate_new_export"
     headers:
-      "PRIVATE-TOKEN: {{ backup_gitlab_token }}"
-    dest: '/home/backup/'
+      "PRIVATE-TOKEN: {{ gitlab_backup_token }}"
+    dest: "{{ gitlab_backup_target_dir }}"
+  register: url_result
+  ignore_errors: yes
   with_items: "{{ backup_gitlab_all_projects.json | default([])}}"
+
+- name: Debug
+  debug: var=url_result
+
+- name: Remove redirect html files (workaround for ignore redirect not working)
+  file:
+    path: "{{ gitlab_backup_target_dir + '/edit' }}"
+    status: absent
+
+# - name: Remove redirect html files (workaround for ignore redirect not working)
+#   file:
+#     path: "{{ item.dest }}"
+#     status: absent
+#   with_items: "{{ url_result }}"
+#   when: "{{ item.dest is defined and item.dest == ( gitlab_backup_target_dir + '/edit' ) }}"
 
 #api not supported yet
 # - name: Start gitlab.com full export
@@ -28,6 +76,6 @@
 #     method: GET
 #     body_format: json
 #     headers:
-#       "PRIVATE-TOKEN": "{{ backup_gitlab_token }}"
+#       "PRIVATE-TOKEN": "{{ gitlab_backup_token }}"
 #   with_items:
 #     - '123123123'
