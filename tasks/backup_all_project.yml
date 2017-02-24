@@ -57,17 +57,17 @@
 - name: Debug
   debug: var=url_result
 
+#- name: Remove redirect html files (workaround for ignore redirect not working)
+#  file:
+#    path: "{{ gitlab_backup_target_dir + '/edit' }}"
+#    state: absent
+
 - name: Remove redirect html files (workaround for ignore redirect not working)
   file:
-    path: "{{ gitlab_backup_target_dir + '/edit' }}"
-    status: absent
-
-# - name: Remove redirect html files (workaround for ignore redirect not working)
-#   file:
-#     path: "{{ item.dest }}"
-#     status: absent
-#   with_items: "{{ url_result }}"
-#   when: "{{ item.dest is defined and item.dest == ( gitlab_backup_target_dir + '/edit' ) }}"
+    path: "{{ item.dest }}"
+    state: absent
+  with_items: "{{ url_result }}"
+  when: "{{ item.dest is defined and item.dest == ( gitlab_backup_target_dir + '/edit' ) }}"
 
 #api not supported yet
 # - name: Start gitlab.com full export
